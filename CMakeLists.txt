@@ -1,43 +1,34 @@
-#from https://github.com/torstem/demo-cuda-pybind11
-cmake_minimum_required(VERSION 3.22)
-project(pybind11-cuda-test LANGUAGES CXX C)
+cmake_minimum_required(VERSION 3.18)
+project(haversine_project LANGUAGES CXX CUDA)
 
-find_package(CUDA)
+# 1. Find Python (Required for Pybind11)
+find_package(Python 3 COMPONENTS Interpreter Development REQUIRED)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+# 2. Find Pybind11
+# We use python to find the cmake path to ensure we get the pip-installed version
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
+    OUTPUT_VARIABLE pybind11_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+find_package(pybind11 REQUIRED CONFIG)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# 3. Create the Python Module
+# IMPORTANT: pybind11_add_module automatically handles linking Python libraries
+# and setting the correct file extensions (.so vs .pyd, etc.)
+pybind11_add_module(haversine_library 
+    haversine_library.cpp 
+    haversine_library.cu
+)
 
-include_directories(${Python3_INCLUDE_DIRS})
+# 4. Set CUDA Properties
+# CUDA_SEPARABLE_COMPILATION is often needed for complex kernels, 
+# and POSITION_INDEPENDENT_CODE is mandatory for shared libraries.
+set_target_properties(haversine_library PROPERTIES 
+    CUDA_SEPARABLE_COMPILATION ON
+    POSITION_INDEPENDENT_CODE ON
+)
 
-cuda_add_library(haversine_library SHARED
-  haversine_library.cpp
-  haversine_library.cu)
-
-target_link_libraries(haversine_library
-  ${Python3_LIBRARY_DIRS}
-  ${CUDA_LIBRARIES})
-
-set_target_properties(haversine_library PROPERTIES PREFIX "")
-
-#From https://github.com/pkestene/pybind11-cuda
-message("//===================================================")
-message("  ${PROJECT_NAME} build configuration:")
-message("//===================================================")
-message("  CUDA compiler ID      : ${CMAKE_CUDA_COMPILER_ID}")
-message("  CUDA compiler Version : ${CMAKE_CUDA_COMPILER_VERSION}")
-message("  C++ Compiler : ${CMAKE_CXX_COMPILER_ID} "
-  "${CMAKE_CXX_COMPILER_VERSION} "
-  "${CMAKE_CXX_COMPILER_WRAPPER}")
-message("    ${CMAKE_CXX_COMPILER}")
-message("  CUDA Compiler      : ${CMAKE_CUDA_COMPILER}")
-message("  CUDA Compiler exec : ${CUDA_NVCC_EXECUTABLE}")
-message("  CUDA Compile flags : ${CMAKE_CUDA_FLAGS}")
-message("  CUDA toolkit inc   : ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-message("")
-message("  Python3_found       : ${Python3_FOUND}")
-message("  Python3 version     : ${Python3_VERSION}")
-message("  Python3 interpreter : ${Python3_EXECUTABLE}")
-message("  Python3 interp. Id  : ${Python3_INTERPRETER_ID}")
-message("  Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
-message("  Python3_LIBRARY_DIRS: ${Python3_LIBRARY_DIRS}")
+# 5. Include Directories
+# Ensure the target can see CUDA headers
+target_include_directories(haversine_library PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
