@@ -3,7 +3,6 @@ import numpy as np
 import time
 import math
 
-# Ensure headless mode (prevents GDK display errors)
 import matplotlib
 matplotlib.use("Agg")
 
@@ -11,14 +10,12 @@ sys.path.append('./build')
 import haversine_library
 import matplotlib.pyplot as plt
 
-# Use POLARS instead of Pandas -> MUCH faster for huge Parquet files
 import polars as pl
 
 DATA_PATH = "/tmp/tlcdata"
 
 def combineAll():
     # Load 12 parquet files lazily (super fast)
-    # Assumes files are named yellow_tripdata_2009-01.parquet, etc.
     files = [f"{DATA_PATH}/yellow_tripdata_2009-{i:02d}.parquet" for i in range(1,13)]
     
     try:
